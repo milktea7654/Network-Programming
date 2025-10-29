@@ -1,0 +1,13 @@
+###HW1
+python3 lobby_server.py --host 0.0.0.0 --port 12000
+
+python3 player_b.py --lobby-host 127.0.0.1 --lobby-port 12000 --username testA --password 123 --udp-port 18000
+
+python3 player_a.py --lobby-host linux2.cs.nycu.edu.tw --lobby-port 12000 --username milktea --password 7654 --scan-hosts linux2.cs.nycu.edu.tw --scan-port-start 18000 --scan-port-end 18020
+
+$ ssh -l wqzheng linux2.cs.nycu.edu.tw
+
+scp -r /home/c0922/Network-Programming/HW1/ wqzheng@linux2.cs.nycu.edu.tw:
+
+
+###HW2
