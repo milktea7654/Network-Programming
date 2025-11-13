@@ -27,7 +27,7 @@ class DatabaseServer:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
-        # User 表
+        # User 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS User (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +39,7 @@ class DatabaseServer:
             )
         ''')
         
-        # Room 表
+        # Room 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS Room (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +53,7 @@ class DatabaseServer:
             )
         ''')
         
-        # GameLog 表
+        # GameLog 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS GameLog (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +72,6 @@ class DatabaseServer:
         print(f"[DB] Database initialized: {DB_FILE}")
     
     def start(self):
-        """啟動資料庫伺服器"""
         self.running = True
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -88,7 +87,6 @@ class DatabaseServer:
                     client_socket, addr = server_socket.accept()
                     print(f"[DB] New connection from {addr}")
                     
-                    # 為每個連接創建新線程
                     thread = threading.Thread(
                         target=self.handle_client,
                         args=(client_socket, addr)
@@ -103,17 +101,13 @@ class DatabaseServer:
             server_socket.close()
     
     def handle_client(self, client_socket, addr):
-        """處理客戶端請求"""
         try:
             while True:
-                # 接收請求
                 request = recv_message(client_socket)
                 print(f"[DB] Request from {addr}: {request.get('action')} on {request.get('collection')}")
                 
-                # 處理請求
                 response = self.process_request(request)
                 
-                # 發送回應
                 send_message(client_socket, response)
                 
         except (ConnectionError, ProtocolError) as e:
@@ -125,7 +119,6 @@ class DatabaseServer:
             print(f"[DB] Connection closed: {addr}")
     
     def process_request(self, request):
-        """處理資料庫請求"""
         collection = request.get('collection')
         action = request.get('action')
         data = request.get('data', {})
@@ -147,7 +140,6 @@ class DatabaseServer:
             return {'success': False, 'error': str(e)}
     
     def create(self, collection, data):
-        """創建記錄"""
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -188,7 +180,6 @@ class DatabaseServer:
             conn.close()
     
     def read(self, collection, data):
-        """讀取記錄"""
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -228,7 +219,6 @@ class DatabaseServer:
             conn.close()
     
     def update(self, collection, data):
-        """更新記錄"""
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -241,7 +231,6 @@ class DatabaseServer:
                 values = list(updates.values()) + [record_id]
                 cursor.execute(f'UPDATE User SET {set_clause} WHERE id = ?', values)
             elif collection == 'Room':
-                # 特殊處理 inviteList（需要序列化）
                 if 'inviteList' in updates:
                     updates['inviteList'] = json.dumps(updates['inviteList'])
                 set_clause = ', '.join([f"{k} = ?" for k in updates.keys()])
@@ -264,7 +253,6 @@ class DatabaseServer:
             conn.close()
     
     def delete(self, collection, data):
-        """刪除記錄"""
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -277,13 +265,11 @@ class DatabaseServer:
             conn.close()
     
     def query(self, collection, data):
-        """查詢記錄"""
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
         try:
             if collection == 'User':
-                # 支援按名稱或 email 查詢
                 if 'name' in data:
                     cursor.execute('SELECT * FROM User WHERE name = ?', (data['name'],))
                 elif 'email' in data:
@@ -299,7 +285,6 @@ class DatabaseServer:
                 return {'success': True, 'data': users}
                 
             elif collection == 'Room':
-                # 支援按狀態或可見性查詢
                 if 'status' in data:
                     cursor.execute('SELECT * FROM Room WHERE status = ?', (data['status'],))
                 elif 'visibility' in data:
@@ -335,7 +320,6 @@ class DatabaseServer:
 
 
 def hash_password(password):
-    """密碼雜湊"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 
