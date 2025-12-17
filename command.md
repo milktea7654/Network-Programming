@@ -81,21 +81,31 @@ rm ~/HW2/game_database.db
 
 ###HW3
 
-# Server & client
+# Server (on linux2)
+cd ~/Network-Programming/HW3/server && python3 main_server.py
 
-cd server && python main_server.py
+# Developer client (local, connect to linux2)
+cd ~/Network-Programming/HW3/developer && python3 developer_client.py
 
-# developer
-cd developer && python developer_client.py
+# Player client (local, connect to linux2)
+cd ~/Network-Programming/HW3/player && python3 lobby_client.py
 
-# player
-cd player && python lobby_client.py
+# Launcher (會自動連到設定的伺服器)
+cd ~/Network-Programming/HW3 && python3 launcher.py
 
-# launcher
-python launcher.py
+# Test connection
+nc -zv linux2.cs.nycu.edu.tw 8001
+nc -zv linux2.cs.nycu.edu.tw 8002
 
-# initial server
-rm -f server/data/*.json
+# Clear Python cache
+find ~/Network-Programming/HW3 -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
+find ~/Network-Programming/HW3 -name "*.pyc" -delete
 
-# uninstall
-rm -rf player/downloads/*
+# Initial server (reset data)
+rm -f ~/Network-Programming/HW3/server/data/*.json
+
+# Uninstall games
+rm -rf ~/Network-Programming/HW3/player/downloads/*
+
+# Upload to linux2
+cd /home/c0922 && scp -r Network-Programming wqzheng@linux2.cs.nycu.edu.tw:~/
