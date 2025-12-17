@@ -1,0 +1,14 @@
+{
+  "name": "Tic Tac Toe",
+  "version": "1.0.0",
+  "type": "gui",
+  "max_players": 2,
+  "description": "經典井字遊戲，透過圖形介面進行對戰",
+  "author": "Platform Developer",
+  "created_at": "2025-12-17T00:00:00",
+  "entry_point": {
+    "server": "tic_tac_toe_server.py",
+    "client": "tic_tac_toe_client.py"
+  },
+  "requirements": ["socket", "threading", "json", "tkinter"]
+}
