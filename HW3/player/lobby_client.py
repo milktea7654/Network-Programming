@@ -9,7 +9,13 @@ import sys
 import zipfile
 import tempfile
 import subprocess
+import argparse
 from typing import Dict, Any, Optional, List
+
+# ============ 伺服器配置 ============
+SERVER_HOST = "linux2.cs.nycu.edu.tw"  # 修改這裡來連接遠端伺服器，例如: "linux2.cs.nycu.edu.tw"
+SERVER_PORT = 8002
+# ===================================
 
 # 添加服務器路徑以導入協議
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'server'))
@@ -18,7 +24,7 @@ from protocol import NetworkProtocol, GameProtocol
 class LobbyClient:
     """大廳客戶端"""
     
-    def __init__(self, server_host: str = "localhost", server_port: int = 8002):
+    def __init__(self, server_host: str = SERVER_HOST, server_port: int = SERVER_PORT):
         self.server_host = server_host
         self.server_port = server_port
         self.socket = None
@@ -29,6 +35,7 @@ class LobbyClient:
         
     def connect(self) -> bool:
         """連接到服務器"""
+        print(f"🔍 調試: 嘗試連接到 {self.server_host}:{self.server_port}")
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.server_host, self.server_port))
@@ -402,8 +409,8 @@ class LobbyClient:
 class LobbyUI:
     """大廳用戶界面"""
     
-    def __init__(self):
-        self.client = LobbyClient()
+    def __init__(self, server_host: str = SERVER_HOST, server_port: int = SERVER_PORT):
+        self.client = LobbyClient(server_host=server_host, server_port=server_port)
         self.running = True
         self.current_room_id = None
     
@@ -847,7 +854,12 @@ class LobbyUI:
         input("\n按Enter鍵繼續...")
 
 if __name__ == "__main__":
-    ui = LobbyUI()
+    parser = argparse.ArgumentParser(description='玩家大廳客戶端')
+    parser.add_argument('--host', default=SERVER_HOST, help=f'服務器地址 (預設: {SERVER_HOST})')
+    parser.add_argument('--port', type=int, default=SERVER_PORT, help=f'服務器端口 (預設: {SERVER_PORT})')
+    args = parser.parse_args()
+    
+    ui = LobbyUI(server_host=args.host, server_port=args.port)
     try:
         ui.run()
     except KeyboardInterrupt:

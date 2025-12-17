@@ -62,7 +62,7 @@ def start_developer_client():
     
     try:
         os.chdir(developer_dir)
-        subprocess.run([sys.executable, "developer_client.py"])
+        subprocess.run([sys.executable, "-B", "developer_client.py"])
         return True
     except Exception as e:
         print(f"❌ 啟動開發者客戶端失敗: {e}")
@@ -81,7 +81,7 @@ def start_lobby_client():
     
     try:
         os.chdir(player_dir)
-        subprocess.run([sys.executable, "lobby_client.py"])
+        subprocess.run([sys.executable, "-B", "lobby_client.py"])
         return True
     except Exception as e:
         print(f"❌ 啟動大廳客戶端失敗: {e}")

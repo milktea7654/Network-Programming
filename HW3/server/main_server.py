@@ -14,8 +14,8 @@ class GamePlatformServer:
     """遊戲平台服務器"""
     
     def __init__(self):
-        self.developer_server = DeveloperServer(host="localhost", port=8001)
-        self.lobby_server = LobbyServer(host="localhost", port=8002)
+        self.developer_server = DeveloperServer(host="0.0.0.0", port=8001)
+        self.lobby_server = LobbyServer(host="0.0.0.0", port=8002)
         self.running = False
     
     def start(self):
