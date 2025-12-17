@@ -79,4 +79,23 @@ rm ~/HW2/game_database.db
 14. 選擇 8 (List Online Users) 查看線上使用者
 15. 選擇 9 (Logout) 登出
 
+###HW3
 
+# Server & client
+
+cd server && python main_server.py
+
+# developer
+cd developer && python developer_client.py
+
+# player
+cd player && python lobby_client.py
+
+# launcher
+python launcher.py
+
+# initial server
+rm -f server/data/*.json
+
+# uninstall
+rm -rf player/downloads/*
