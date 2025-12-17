@@ -114,7 +114,7 @@ class TicTacToeClient:
             if self.winner == 'TIE':
                 self.info_label.config(text="Game Over: It's a TIE!", fg='orange')
             elif self.winner == self.my_symbol:
-                self.info_label.config(text="🎉 You WIN! 🎉", fg='green')
+                self.info_label.config(text=" You WIN! ", fg='green')
             else:
                 self.info_label.config(text="You LOSE!", fg='red')
         else:
@@ -147,7 +147,7 @@ class TicTacToeClient:
         if self.winner == 'TIE':
             result = "It's a TIE!"
         elif self.winner == self.my_symbol:
-            result = "🎉 You WIN! 🎉"
+            result = " You WIN! "
         else:
             result = "You LOSE!"
         

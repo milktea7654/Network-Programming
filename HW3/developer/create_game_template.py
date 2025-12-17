@@ -1,14 +1,8 @@
-#!/usr/bin/env python3
-"""
-遊戲模板創建工具
-為開發者提供標準遊戲項目模板
-"""
 import os
 import json
 from datetime import datetime
 
 class GameTemplateCreator:
-    """遊戲模板創建器"""
     
     def __init__(self):
         self.templates = {
@@ -18,21 +12,17 @@ class GameTemplateCreator:
         }
     
     def create_game_template(self, game_name: str, game_type: str, target_dir: str = None):
-        """創建遊戲模板"""
         if game_type not in self.templates:
-            print(f"❌ 不支持的遊戲類型: {game_type}")
+            print(f" 不支持的遊戲類型: {game_type}")
             return False
         
         if target_dir is None:
             target_dir = os.path.join("./games", game_name.lower().replace(" ", "_"))
         
-        # 創建遊戲目錄
         os.makedirs(target_dir, exist_ok=True)
         
-        # 創建配置文件
         self.create_config_file(game_name, game_type, target_dir)
         
-        # 根據類型創建相應模板
         if game_type == 'cli':
             self.create_cli_template(game_name, target_dir)
         elif game_type == 'gui':
@@ -40,11 +30,10 @@ class GameTemplateCreator:
         elif game_type == 'multiplayer':
             self.create_multiplayer_template(game_name, target_dir)
         
-        print(f"✅ 遊戲模板已創建: {target_dir}")
+        print(f" 遊戲模板已創建: {target_dir}")
         return True
     
     def create_config_file(self, game_name: str, game_type: str, target_dir: str):
-        """創建遊戲配置文件"""
         config = {
             "name": game_name,
             "version": "1.0.0",
@@ -65,10 +54,8 @@ class GameTemplateCreator:
             json.dump(config, f, ensure_ascii=False, indent=2)
     
     def create_cli_template(self, game_name: str, target_dir: str):
-        """創建CLI遊戲模板"""
         game_module = game_name.lower().replace(" ", "_")
         
-        # 創建服務器端代碼
         server_code = f'''#!/usr/bin/env python3
 """
 {game_name} - 遊戲服務器端
@@ -114,7 +101,7 @@ class {game_name.replace(" ", "")}Server:
             self.server_socket.listen(2)
             self.running = True
             
-            print(f"🎮 {game_name} 服務器啟動於 {{self.host}}:{{self.port}}")
+            print(f" {game_name} 服務器啟動於 {{self.host}}:{{self.port}}")
             
             # 初始化遊戲
             self.init_game()
@@ -151,10 +138,10 @@ class {game_name.replace(" ", "")}Server:
         # 在這裡初始化具體的遊戲邏輯
         # 例如：棋盤、卡牌等
         self.game_state["board"] = "初始遊戲狀態"
-        print("🎯 遊戲已初始化")
+        print(" 遊戲已初始化")
     
     def handle_player(self, client_socket: socket.socket):
-        """處理玩家連接"""
+
         player_id = self.game_state["player_count"]
         self.game_state["player_count"] += 1
         
@@ -218,10 +205,10 @@ class {game_name.replace(" ", "")}Server:
             "game_state": self.get_public_game_state()
         }})
         
-        print("🚀 遊戲開始！")
+        print(" 遊戲開始！")
     
     def handle_player_action(self, client_socket: socket.socket, message: Dict):
-        """處理玩家動作"""
+
         if self.game_state["status"] != "playing":
             return
         
@@ -300,7 +287,7 @@ class {game_name.replace(" ", "")}Server:
             "final_state": self.get_public_game_state()
         }})
         
-        print(f"🏁 遊戲結束: {{message}}")
+        print(f" 遊戲結束: {{message}}")
         
         # 延遲關閉服務器
         threading.Timer(3.0, self.stop).start()
@@ -332,7 +319,7 @@ class {game_name.replace(" ", "")}Server:
         self.running = False
         if self.server_socket:
             self.server_socket.close()
-        print("🔄 遊戲服務器已停止")
+        print(" 遊戲服務器已停止")
     
     def cleanup(self):
         """清理資源"""
@@ -380,24 +367,24 @@ class {game_name.replace(" ", "")}Client:
             self.socket.connect((host, port))
             self.running = True
             
-            print(f"✅ 已連接到 {game_name} 服務器 {{host}}:{{port}}")
+            print(f" 已連接到 {game_name} 服務器 {{host}}:{{port}}")
             return True
             
         except Exception as e:
-            print(f"❌ 連接失敗: {{e}}")
+            print(f" 連接失敗: {{e}}")
             return False
     
     def start(self):
         """開始遊戲客戶端"""
         if not self.running:
-            print("❌ 尚未連接到服務器")
+            print(" 尚未連接到服務器")
             return
         
         # 啟動消息接收線程
         receive_thread = threading.Thread(target=self.receive_messages, daemon=True)
         receive_thread.start()
         
-        print("🎮 歡迎來到 {game_name}！")
+        print(" 歡迎來到 {game_name}！")
         print("等待其他玩家加入...")
         
         try:
@@ -411,7 +398,7 @@ class {game_name.replace(" ", "")}Client:
                     time.sleep(0.1)
         
         except KeyboardInterrupt:
-            print("\\n🔄 遊戲被中斷")
+            print("\\n 遊戲被中斷")
         finally:
             self.disconnect()
     
@@ -427,16 +414,16 @@ class {game_name.replace(" ", "")}Client:
                     message = json.loads(data.decode('utf-8'))
                     self.handle_server_message(message)
                 except json.JSONDecodeError:
-                    print("❌ 接收到無效的消息格式")
+                    print(" 接收到無效的消息格式")
                 
         except Exception as e:
             if self.running:
-                print(f"❌ 接收消息時出錯: {{e}}")
+                print(f" 接收消息時出錯: {{e}}")
         finally:
             self.running = False
     
     def handle_server_message(self, message: dict):
-        """處理服務器消息"""
+
         msg_type = message.get("type")
         
         if msg_type == "welcome":
@@ -444,31 +431,31 @@ class {game_name.replace(" ", "")}Client:
             print(f"\\n{{message.get('message')}}")
             
         elif msg_type == "game_start":
-            print(f"\\n🚀 {{message.get('message')}}")
+            print(f"\\n {{message.get('message')}}")
             self.game_state = message.get("game_state", {{}})
             self.display_game_state()
             self.check_my_turn()
             
         elif msg_type == "game_update":
             self.game_state = message.get("game_state", {{}})
-            print("\\n📋 遊戲狀態已更新")
+            print("\\n 遊戲狀態已更新")
             self.display_game_state()
             
         elif msg_type == "turn_change":
             self.game_state["current_player"] = message.get("current_player")
-            print(f"\\n🎯 {{message.get('message')}}")
+            print(f"\\n {{message.get('message')}}")
             self.check_my_turn()
             
         elif msg_type == "game_end":
-            print(f"\\n🏁 {{message.get('message')}}")
+            print(f"\\n {{message.get('message')}}")
             print("遊戲結束，3秒後自動退出...")
             self.running = False
             
         elif msg_type == "error":
-            print(f"\\n❌ {{message.get('message')}}")
+            print(f"\\n {{message.get('message')}}")
             
         else:
-            print(f"\\n📨 未知消息: {{message}}")
+            print(f"\\n 未知消息: {{message}}")
     
     def check_my_turn(self):
         """檢查是否輪到自己"""
@@ -476,28 +463,28 @@ class {game_name.replace(" ", "")}Client:
         self.my_turn = (current_player == self.player_id)
         
         if self.my_turn:
-            print("\\n⭐ 輪到您了！請輸入您的操作:")
+            print("\\n 輪到您了！請輸入您的操作:")
     
     def display_game_state(self):
         """顯示遊戲狀態"""
         print("\\n" + "="*30)
-        print("📋 當前遊戲狀態")
+        print(" 當前遊戲狀態")
         print("="*30)
         
         # 顯示當前玩家
         current_player = self.game_state.get("current_player", 0)
-        print(f"🎯 當前玩家: Player{{current_player + 1}}")
+        print(f" 當前玩家: Player{{current_player + 1}}")
         
         # 顯示遊戲板狀態
         board = self.game_state.get("board")
-        print(f"🎲 遊戲狀態: {{board}}")
+        print(f" 遊戲狀態: {{board}}")
         
         # 在這裡添加具體的遊戲狀態顯示邏輯
         
         print("="*30)
     
     def handle_player_input(self):
-        """處理玩家輸入"""
+
         print("\\n可用操作:")
         print("1. 執行移動")
         print("2. 查看狀態")
@@ -513,7 +500,7 @@ class {game_name.replace(" ", "")}Client:
             elif choice == "0":
                 self.running = False
             else:
-                print("❌ 無效選擇，請重新輸入")
+                print(" 無效選擇，請重新輸入")
         
         except KeyboardInterrupt:
             self.running = False
@@ -548,7 +535,7 @@ class {game_name.replace(" ", "")}Client:
                 data = json.dumps(message, ensure_ascii=False)
                 self.socket.send(data.encode('utf-8'))
         except Exception as e:
-            print(f"❌ 發送消息失敗: {{e}}")
+            print(f" 發送消息失敗: {{e}}")
     
     def disconnect(self):
         """斷開連接"""
@@ -556,7 +543,7 @@ class {game_name.replace(" ", "")}Client:
         if self.socket:
             self.socket.close()
             self.socket = None
-        print("📡 已斷開連接")
+        print(" 已斷開連接")
 
 if __name__ == "__main__":
     client = {game_name.replace(" ", "")}Client()
@@ -572,7 +559,7 @@ if __name__ == "__main__":
     if client.connect(host, port):
         client.start()
     else:
-        print("❌ 無法連接到遊戲服務器")
+        print(" 無法連接到遊戲服務器")
 '''
         
         # 寫入文件
@@ -585,17 +572,12 @@ if __name__ == "__main__":
         with open(client_path, 'w', encoding='utf-8') as f:
             f.write(client_code)
         
-        # 設置可執行權限
         os.chmod(server_path, 0o755)
         os.chmod(client_path, 0o755)
     
     def create_gui_template(self, game_name: str, target_dir: str):
-        """創建GUI遊戲模板"""
-        # GUI版本將在CLI版本基礎上添加tkinter界面
-        # 這裡先創建基礎CLI版本
         self.create_cli_template(game_name, target_dir)
         
-        # 添加GUI相關代碼(簡化版本)
         gui_code = f'''#!/usr/bin/env python3
 """
 {game_name} - GUI客戶端
@@ -680,7 +662,7 @@ class {game_name.replace(" ", "")}GUI:
                 self.root.after(0, self.on_connected)
                 self.client.start()
             else:
-                self.root.after(0, lambda: self.add_message("❌ 連接失敗"))
+                self.root.after(0, lambda: self.add_message(" 連接失敗"))
         
         threading.Thread(target=connect_thread, daemon=True).start()
     
@@ -689,7 +671,7 @@ class {game_name.replace(" ", "")}GUI:
         self.status_label.config(text="狀態: 已連接")
         self.connect_btn.config(state=tk.DISABLED)
         self.disconnect_btn.config(state=tk.NORMAL)
-        self.add_message("✅ 已連接到遊戲服務器")
+        self.add_message(" 已連接到遊戲服務器")
         
         # 重寫客戶端的消息處理方法
         original_handle = self.client.handle_server_message
@@ -706,27 +688,27 @@ class {game_name.replace(" ", "")}GUI:
         self.status_label.config(text="狀態: 未連接")
         self.connect_btn.config(state=tk.NORMAL)
         self.disconnect_btn.config(state=tk.DISABLED)
-        self.add_message("📡 已斷開連接")
+        self.add_message(" 已斷開連接")
     
     def handle_game_message(self, message):
-        """處理遊戲消息(GUI版本)"""
+
         msg_type = message.get("type")
         msg_content = message.get("message", "")
         
         if msg_type == "welcome":
-            self.add_message(f"🎮 {{msg_content}}")
+            self.add_message(f" {{msg_content}}")
         elif msg_type == "game_start":
-            self.add_message(f"🚀 {{msg_content}}")
+            self.add_message(f" {{msg_content}}")
             self.update_game_display(message.get("game_state", {{}}))
         elif msg_type == "game_update":
             self.update_game_display(message.get("game_state", {{}}))
         elif msg_type == "turn_change":
-            self.add_message(f"🎯 {{msg_content}}")
+            self.add_message(f" {{msg_content}}")
         elif msg_type == "game_end":
-            self.add_message(f"🏁 {{msg_content}}")
+            self.add_message(f" {{msg_content}}")
             messagebox.showinfo("遊戲結束", msg_content)
         elif msg_type == "error":
-            self.add_message(f"❌ {{msg_content}}")
+            self.add_message(f" {{msg_content}}")
             messagebox.showerror("錯誤", msg_content)
     
     def update_game_display(self, game_state):
@@ -774,11 +756,9 @@ if __name__ == "__main__":
         os.chmod(gui_path, 0o755)
     
     def create_multiplayer_template(self, game_name: str, target_dir: str):
-        """創建多人遊戲模板"""
-        # 多人版本基於CLI版本，但支持更多玩家
+
         self.create_cli_template(game_name, target_dir)
-        
-        # 修改配置支持更多玩家
+
         config_path = os.path.join(target_dir, "game_config.json")
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -792,9 +772,9 @@ if __name__ == "__main__":
     def show_template_menu(self):
         """顯示模板選擇菜單"""
         print("\\n" + "="*50)
-        print("🎮 遊戲模板創建工具")
+        print(" 遊戲模板創建工具")
         print("="*50)
-        print("\\n📋 可用模板:")
+        print("\\n 可用模板:")
         
         for i, (template_type, description) in enumerate(self.templates.items(), 1):
             print(f"{i}. {template_type.upper()} - {description}")
@@ -813,34 +793,34 @@ if __name__ == "__main__":
                     template_types = list(self.templates.keys())
                     return template_types[choice_num - 1]
                 else:
-                    print(f"❌ 請輸入 0 到 {len(self.templates)} 之間的數字")
+                    print(f" 請輸入 0 到 {len(self.templates)} 之間的數字")
             except ValueError:
-                print("❌ 請輸入有效的數字")
+                print(" 請輸入有效的數字")
 
 def main():
-    """主函數"""
+
     creator = GameTemplateCreator()
     
-    print("🚀 歡迎使用遊戲模板創建工具！")
+    print(" 歡迎使用遊戲模板創建工具！")
     
     while True:
         template_type = creator.show_template_menu()
         
         if template_type is None:
-            print("👋 再見！")
+            print(" 再見！")
             break
         
         game_name = input("\\n請輸入遊戲名稱: ").strip()
         if not game_name:
-            print("❌ 遊戲名稱不能為空")
+            print(" 遊戲名稱不能為空")
             continue
         
         target_dir = input(f"請輸入目標目錄 (按Enter使用默認: ./games/{game_name.lower().replace(' ', '_')}): ").strip()
         
         if creator.create_game_template(game_name, template_type, target_dir or None):
-            print(f"\\n✅ 模板創建成功！")
-            print(f"📁 位置: {target_dir or os.path.join('./games', game_name.lower().replace(' ', '_'))}")
-            print("\\n📖 下一步:")
+            print(f"\\n 模板創建成功！")
+            print(f"位置: {target_dir or os.path.join('./games', game_name.lower().replace(' ', '_'))}")
+            print("\\n下一步:")
             print("1. 進入遊戲目錄")
             print("2. 編輯遊戲邏輯代碼")
             print("3. 測試遊戲功能")
@@ -850,7 +830,7 @@ def main():
             if create_more != 'y':
                 break
         else:
-            print("❌ 模板創建失敗")
+            print(" 模板創建失敗")
 
 if __name__ == "__main__":
     main()

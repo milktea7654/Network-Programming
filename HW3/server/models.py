@@ -1,17 +1,12 @@
-#!/usr/bin/env python3
-"""
-共用的數據模型定義
-"""
 from datetime import datetime
 import json
 from typing import Dict, List, Optional
 
 class User:
-    """用戶基類"""
     def __init__(self, username: str, password: str, user_type: str):
         self.username = username
         self.password = password
-        self.user_type = user_type  # 'developer' or 'player'
+        self.user_type = user_type
         self.created_at = datetime.now()
         self.last_login = None
         self.is_online = False
@@ -36,13 +31,12 @@ class User:
         return user
 
 class Game:
-    """遊戲模型"""
     def __init__(self, name: str, developer: str, description: str = "", 
                  game_type: str = "cli", max_players: int = 2):
         self.name = name
         self.developer = developer
         self.description = description
-        self.game_type = game_type  # 'cli', 'gui', 'multiplayer'
+        self.game_type = game_type
         self.max_players = max_players
         self.current_version = "1.0.0"
         self.versions = {"1.0.0": {"uploaded_at": datetime.now(), "description": "Initial version"}}
@@ -50,7 +44,7 @@ class Game:
         self.is_active = True
         self.total_rating = 0.0
         self.rating_count = 0
-        self.reviews = []  # List of Review objects
+        self.reviews = []
         
     def add_version(self, version: str, description: str = ""):
         self.versions[version] = {
@@ -107,7 +101,6 @@ class Game:
         return game
 
 class Room:
-    """房間模型"""
     def __init__(self, room_id: str, host: str, game_name: str, game_version: str, max_players: int):
         self.room_id = room_id
         self.host = host
@@ -116,7 +109,7 @@ class Room:
         self.max_players = max_players
         self.players = [host]
         self.created_at = datetime.now()
-        self.status = "waiting"  # waiting, playing, finished
+        self.status = "waiting"
         self.game_server_port = None
         
     def add_player(self, player: str) -> bool:
@@ -154,11 +147,10 @@ class Room:
         room.players = data['players']
         room.created_at = datetime.fromisoformat(data['created_at'])
         room.status = data['status']
-        room.game_server_port = data['game_server_port']
+        room.game_server_port = data.get('game_server_port')
         return room
 
 class PlayerGameRecord:
-    """玩家遊戲記錄"""
     def __init__(self, player: str, game_name: str, game_version: str):
         self.player = player
         self.game_name = game_name

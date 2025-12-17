@@ -7,9 +7,9 @@ import random
 import time
 
 class SnakeServer:
-    def __init__(self, port):
+    def __init__(self, port, host='0.0.0.0'):
         self.port = port
-        self.host = '0.0.0.0'
+        self.host = host
         self.players = {}
         self.food = []
         self.game_started = False
@@ -255,6 +255,17 @@ class SnakeServer:
             return None
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 9002
-    server = SnakeServer(port)
+    # 支持兩種呼叫方式：
+    # python server.py <port>
+    # python server.py <host> <port>
+    if len(sys.argv) >= 3:
+        host = sys.argv[1]
+        port = int(sys.argv[2])
+        server = SnakeServer(port, host)
+    elif len(sys.argv) >= 2:
+        port = int(sys.argv[1])
+        server = SnakeServer(port)
+    else:
+        port = 9002
+        server = SnakeServer(port)
     server.start()

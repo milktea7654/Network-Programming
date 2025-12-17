@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Lobby Server
-處理玩家相關的請求：遊戲瀏覽、下載、房間管理、遊戲啟動等
-"""
 import socket
 import threading
 import os
@@ -18,29 +13,26 @@ from models import Room
 from protocol import NetworkProtocol, GameProtocol, ResponseCode
 
 class LobbyServer:
-    """大廳服務器"""
     
     def __init__(self, host: str = "localhost", port: int = 8002, data_manager: DataManager = None):
         self.host = host
         self.port = port
-        # 如果沒有傳入 data_manager，則創建新的（向後兼容）
         if data_manager:
             self.data_manager = data_manager
-            print(f"   🟢 LobbyServer: 使用共用 DataManager (ID: {id(data_manager)})")
+            print(f"   LobbyServer: 使用共用 DataManager (ID: {id(data_manager)})")
         else:
             self.data_manager = DataManager("./data")
-            print(f"   🟡 LobbyServer: 創建新 DataManager (ID: {id(self.data_manager)})")
+            print(f"   LobbyServer: 創建新 DataManager (ID: {id(self.data_manager)})")
         
         self.upload_dir = "./uploaded_games"
         
         self.server_socket = None
         self.running = False
-        self.clients = {}  # {socket: username}
-        self.game_servers = {}  # {room_id: process}
-        self.next_game_port = 9000  # 遊戲服務器端口起始
+        self.clients = {}
+        self.game_servers = {}
+        self.next_game_port = 9000
     
     def start(self):
-        """啟動服務器"""
         try:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -53,9 +45,10 @@ class LobbyServer:
             while self.running:
                 try:
                     client_socket, address = self.server_socket.accept()
+                    print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                     print(f"玩家客戶端連接: {address}")
+                    print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                     
-                    # 為每個客戶端創建處理線程
                     client_thread = threading.Thread(
                         target=self.handle_client,
                         args=(client_socket,),
@@ -73,20 +66,39 @@ class LobbyServer:
             self.cleanup()
     
     def stop(self):
-        """停止服務器"""
         self.running = False
         if self.server_socket:
             self.server_socket.close()
         
-        # 關閉所有遊戲服務器
         for process in self.game_servers.values():
             try:
                 process.terminate()
             except:
                 pass
     
+    def monitor_game_server(self, room_id: str, game_process):
+        import time
+        try:
+            print(f"[MONITOR] 開始監控房間 {room_id} 的遊戲服務器 (PID: {game_process.pid})")
+            
+            game_process.wait()
+            
+            print(f"[MONITOR] 遊戲服務器進程已結束 (房間: {room_id}, 退出碼: {game_process.returncode})")
+            
+            if room_id in self.data_manager.rooms:
+                room = self.data_manager.rooms[room_id]
+                room.status = "waiting"
+                room.game_server_port = None
+                self.data_manager.save_data()
+                print(f"[MONITOR] 房間 {room_id} 狀態已重置為 waiting")
+            
+            if room_id in self.game_servers:
+                del self.game_servers[room_id]
+                
+        except Exception as e:
+            print(f"[MONITOR] 監控遊戲服務器時出錯: {e}")
+    
     def cleanup(self):
-        """清理資源"""
         for client_socket in list(self.clients.keys()):
             client_socket.close()
         self.clients.clear()
@@ -95,29 +107,67 @@ class LobbyServer:
             self.server_socket.close()
     
     def handle_client(self, client_socket: socket.socket):
-        """處理客戶端請求"""
+        client_addr = None
+        try:
+            client_addr = client_socket.getpeername()
+            print(f"[CLIENT] 開始處理客戶端: {client_addr}")
+        except:
+            print(f"[CLIENT] 無法獲取客戶端地址")
+        
         try:
             while self.running:
                 message = NetworkProtocol.receive_message(client_socket)
                 if not message:
+                    print(f"[CLIENT] 客戶端 {client_addr} 斷開連接")
                     break
+                
+                msg_type = message.get('type', 'UNKNOWN')
+                print(f"[CLIENT] 收到消息類型: {msg_type}")
                 
                 response = self.process_message(client_socket, message)
                 if response:
-                    NetworkProtocol.send_message(client_socket, response)
+                    print(f"[CLIENT] 準備發送回應: {response.get('status')}")
+                    if not NetworkProtocol.send_message(client_socket, response):
+                        print(f"[CLIENT] 發送回應失敗")
+                        break
+                    print(f"[CLIENT] 回應已發送")
                     
         except Exception as e:
-            print(f"處理客戶端時出錯: {e}")
+            print(f"[CLIENT] 處理客戶端時出錯: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
-            # 客戶端斷線處理
             if client_socket in self.clients:
                 username = self.clients[client_socket]
+                print(f"玩家 {username} 斷開連接，進行清理...")
+                
+                rooms_to_clean = []
+                for room_id, room in self.data_manager.rooms.items():
+                    if username in room.players:
+                        print(f"   從房間 {room_id} 移除玩家 {username}")
+                        room.players.remove(username)
+                        
+                        if not room.players:
+                            rooms_to_clean.append(room_id)
+                            print(f"   房間 {room_id} 已空，將被刪除")
+                        elif room.host == username and room.players:
+                            room.host = room.players[0]
+                            print(f"   房主已轉移給 {room.host}")
+                
+                for room_id in rooms_to_clean:
+                    del self.data_manager.rooms[room_id]
+                
+                if rooms_to_clean or any(username in room.players for room in self.data_manager.rooms.values()):
+                    self.data_manager.save_data()
+                
                 self.data_manager.set_user_online(username, False)
                 del self.clients[client_socket]
+                
+                print(f" 玩家 {username} 清理完成")
             client_socket.close()
     
     def process_message(self, client_socket: socket.socket, message: Dict[str, Any]) -> Dict[str, Any]:
-        """處理消息"""
+
         msg_type = message.get('type')
         data = message.get('data', {})
         
@@ -164,35 +214,39 @@ class LobbyServer:
             )
     
     def handle_register(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理註冊"""
+        print(f"[REGISTER] 收到註冊請求")
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
         
+        print(f"[REGISTER] 用戶名: {username}, 密碼長度: {len(password)}")
+        
         if not username or not password:
+            print(f"[REGISTER] 註冊失敗: 用戶名或密碼為空")
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
                 "用戶名和密碼不能為空"
             )
         
         if self.data_manager.create_user(username, password, 'player'):
+            print(f"[REGISTER] 註冊成功: {username}")
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "註冊成功"
             )
         else:
+            print(f"[REGISTER] 註冊失敗: 用戶名已存在 - {username}")
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
                 "用戶名已存在"
             )
     
     def handle_login(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理登入"""
+
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
         
         user = self.data_manager.authenticate_user(username, password, 'player')
         if user:
-            # 檢查是否已經在線
             if user.is_online:
                 return NetworkProtocol.create_response(
                     NetworkProtocol.STATUS_ERROR,
@@ -214,11 +268,34 @@ class LobbyServer:
             )
     
     def handle_logout(self, client_socket: socket.socket) -> Dict[str, Any]:
-        """處理登出"""
+
         if client_socket in self.clients:
             username = self.clients[client_socket]
+            print(f"玩家 {username} 主動登出，進行清理...")
+            
+            rooms_to_clean = []
+            for room_id, room in self.data_manager.rooms.items():
+                if username in room.players:
+                    print(f"   從房間 {room_id} 移除玩家 {username}")
+                    room.players.remove(username)
+
+                    if not room.players:
+                        rooms_to_clean.append(room_id)
+                        print(f"   房間 {room_id} 已空，將被刪除")
+                    elif room.host == username and room.players:
+                        room.host = room.players[0]
+                        print(f"   房主已轉移給 {room.host}")
+
+            for room_id in rooms_to_clean:
+                del self.data_manager.rooms[room_id]
+
+            if rooms_to_clean or any(username in room.players for room in self.data_manager.rooms.values()):
+                self.data_manager.save_data()
+
             self.data_manager.set_user_online(username, False)
             del self.clients[client_socket]
+            
+            print(f" 玩家 {username} 登出清理完成")
             
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
@@ -231,14 +308,12 @@ class LobbyServer:
             )
     
     def handle_list_games(self) -> Dict[str, Any]:
-        """獲取遊戲列表"""
-        # 強制重新載入數據以確保最新狀態
         self.data_manager.load_data()
         games = self.data_manager.get_active_games()
-        print(f"🔍 DEBUG: 重新載入後獲取到 {len(games)} 個活躍遊戲")
-        print(f"🔍 DEBUG: 所有遊戲與狀態:")
+        print(f" DEBUG: 重新載入後獲取到 {len(games)} 個活躍遊戲")
+        print(f" DEBUG: 所有遊戲與狀態:")
         for name, game in self.data_manager.games.items():
-            status = "✅已上架" if game.is_active else "❌已下架"
+            status = "已上架" if game.is_active else "已下架"
             print(f"   - {name}: {status}")
         
         games_data = []
@@ -262,7 +337,6 @@ class LobbyServer:
         )
     
     def handle_get_game_info(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """獲取遊戲詳細信息"""
         game_name = data.get('name', '').strip()
         
         if game_name not in self.data_manager.games:
@@ -290,7 +364,7 @@ class LobbyServer:
                         for v, info in game.versions.items()],
             'rating': game.get_average_rating(),
             'rating_count': game.rating_count,
-            'reviews': game.reviews[-10:],  # 最近10條評論
+            'reviews': game.reviews[-10:],  
             'created_at': game.created_at.strftime("%Y-%m-%d")
         }
         
@@ -301,7 +375,7 @@ class LobbyServer:
         )
     
     def handle_download_game(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理遊戲下載"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -324,7 +398,6 @@ class LobbyServer:
                 "遊戲已下架"
             )
         
-        # 如果未指定版本，使用最新版本
         if not version:
             version = game.current_version
         
@@ -334,15 +407,13 @@ class LobbyServer:
                 "指定版本不存在"
             )
         
-        # 準備遊戲文件
         game_dir = os.path.join(self.upload_dir, game_name, version)
         if not os.path.exists(game_dir):
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
                 "遊戲文件不存在"
             )
-        
-        # 創建臨時zip文件
+
         temp_zip = f"/tmp/{game_name}_v{version}_{uuid.uuid4().hex}.zip"
         
         try:
@@ -353,7 +424,6 @@ class LobbyServer:
                         arcname = os.path.relpath(file_path, game_dir)
                         zipf.write(file_path, arcname)
             
-            # 通知客戶端準備接收文件
             response = NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "準備發送遊戲文件",
@@ -361,16 +431,13 @@ class LobbyServer:
             )
             NetworkProtocol.send_message(client_socket, response)
             
-            # 發送文件
             if GameProtocol.send_file(client_socket, temp_zip):
-                # 刪除臨時文件
                 os.remove(temp_zip)
                 return NetworkProtocol.create_response(
                     NetworkProtocol.STATUS_SUCCESS,
                     "遊戲下載完成"
                 )
             else:
-                # 刪除臨時文件
                 if os.path.exists(temp_zip):
                     os.remove(temp_zip)
                 return NetworkProtocol.create_response(
@@ -388,7 +455,6 @@ class LobbyServer:
             )
     
     def handle_list_rooms(self) -> Dict[str, Any]:
-        """獲取房間列表"""
         rooms = self.data_manager.get_active_rooms()
         
         rooms_data = []
@@ -403,6 +469,7 @@ class LobbyServer:
                 'current_players': len(room.players),
                 'players': room.players,
                 'status': room.status,
+                'game_server_port': room.game_server_port,
                 'created_at': room.created_at.strftime("%Y-%m-%d %H:%M")
             })
         
@@ -413,7 +480,7 @@ class LobbyServer:
         )
     
     def handle_create_room(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理創建房間"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -437,7 +504,6 @@ class LobbyServer:
                 "遊戲已下架"
             )
         
-        # 如果未指定版本，使用最新版本
         if not game_version:
             game_version = game.current_version
         
@@ -446,11 +512,9 @@ class LobbyServer:
                 NetworkProtocol.STATUS_ERROR,
                 "指定版本不存在"
             )
-        
-        # 生成房間ID
+
         room_id = str(uuid.uuid4())[:8]
-        
-        # 創建房間
+
         room = Room(room_id, username, game_name, game_version, game.max_players)
         
         if self.data_manager.create_room(room):
@@ -471,7 +535,7 @@ class LobbyServer:
             )
     
     def handle_join_room(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理加入房間"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -518,7 +582,7 @@ class LobbyServer:
             )
     
     def handle_leave_room(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理離開房間"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -543,12 +607,18 @@ class LobbyServer:
         
         room.remove_player(username)
         
-        # 如果房間空了或者房主離開了，刪除房間
-        if not room.players or username == room.host:
+        if not room.players:
             self.data_manager.remove_room(room_id)
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "房間已解散"
+            )
+        elif username == room.host:
+            room.host = room.players[0]
+            self.data_manager.save_data()
+            return NetworkProtocol.create_response(
+                NetworkProtocol.STATUS_SUCCESS,
+                f"離開房間成功，房主已轉移給 {room.host}"
             )
         else:
             self.data_manager.save_data()
@@ -558,7 +628,7 @@ class LobbyServer:
             )
     
     def handle_start_game(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理開始遊戲"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -586,13 +656,11 @@ class LobbyServer:
                 NetworkProtocol.STATUS_ERROR,
                 "至少需要2名玩家才能開始遊戲"
             )
-        
-        # 啟動遊戲服務器
+    
         game_port = self.next_game_port
         self.next_game_port += 1
         
         try:
-            # 啟動遊戲服務器進程
             game_server_path = self.find_game_server(room.game_name, room.game_version)
             if not game_server_path:
                 return NetworkProtocol.create_response(
@@ -600,40 +668,78 @@ class LobbyServer:
                     "找不到遊戲服務器文件"
                 )
             
-            # 使用subprocess啟動遊戲服務器
             import subprocess
-            game_process = subprocess.Popen([
-                sys.executable, game_server_path, "0.0.0.0", str(game_port)
-            ], cwd=os.path.dirname(game_server_path))
             
-            # 記錄遊戲服務器進程
+            game_server_path = os.path.abspath(game_server_path)
+            game_server_dir = os.path.dirname(game_server_path)
+            
+            print(f"[DEBUG] 啟動遊戲服務器: {game_server_path}")
+            print(f"[DEBUG] 工作目錄: {game_server_dir}")
+            print(f"[DEBUG] 參數: port={game_port}")
+            print(f"[DEBUG] Python: {sys.executable}")
+            
+            game_process = subprocess.Popen([
+                sys.executable, "-u", game_server_path, str(game_port)
+            ], 
+            cwd=game_server_dir)
+            
             self.game_servers[room_id] = game_process
             
+            print(f"[DEBUG] 遊戲服務器進程已啟動 PID: {game_process.pid}")
+            
+            monitor_thread = threading.Thread(
+                target=self.monitor_game_server,
+                args=(room_id, game_process),
+                daemon=True
+            )
+            monitor_thread.start()
             room.game_server_port = game_port
             room.status = "playing"
             
-            # 記錄玩家遊戲紀錄
+            print(f"[DEBUG] 準備添加遊戲記錄，玩家列表: {room.players}")
             for player in room.players:
+                print(f"[DEBUG] 添加記錄: 玩家={player}, 遊戲={room.game_name}, 版本={room.game_version}")
                 self.data_manager.add_game_record(player, room.game_name, room.game_version)
             
-            self.data_manager.save_data()
+            print(f"[DEBUG] 房間狀態已更新並保存: port={game_port}")
             
-            # 等待遊戲服務器啟動
             import time
-            time.sleep(2)
+            print(f"[DEBUG] 等待遊戲服務器啟動...")
+            time.sleep(2)  
+
+            if game_process.poll() is not None:
+                error_msg = f" 遊戲服務器啟動失敗 (退出碼: {game_process.returncode})"
+                print(f"[ERROR] {error_msg}")
+                print(f"[ERROR] 請查看上方的遊戲服務器輸出以了解詳細錯誤")
+                return NetworkProtocol.create_response(
+                    NetworkProtocol.STATUS_ERROR,
+                    error_msg
+                )
             
-            # 使用實際的服務器地址，不是 0.0.0.0
-            if self.host == "0.0.0.0":
-                actual_host = "linux2.cs.nycu.edu.tw"
-            else:
-                actual_host = self.host
+            print(f"[DEBUG]  遊戲服務器進程運行中 (PID: {game_process.pid})")
+            print(f"[DEBUG] 遊戲服務器應該正在監聽 0.0.0.0:{game_port}")
+            print(f"[DEBUG] 客戶端將使用 lobby_server 地址連接到端口 {game_port}")
+            
+            time.sleep(1)
+            try:
+                import socket as test_socket
+                s = test_socket.socket(test_socket.AF_INET, test_socket.SOCK_STREAM)
+                s.settimeout(2)
+                result = s.connect_ex(('localhost', game_port))
+                s.close()
+                if result == 0:
+                    print(f"[DEBUG]  端口 {game_port} 確認已開放")
+                else:
+                    print(f"[WARNING]   端口 {game_port} 無法連接 (錯誤碼: {result})")
+                    print(f"[WARNING] 遊戲服務器可能還在初始化中...")
+            except Exception as e:
+                print(f"[WARNING] 端口檢查失敗: {e}")
             
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "遊戲已開始",
                 {
                     'room_id': room_id,
-                    'game_server_host': actual_host,
                     'game_server_port': game_port,
                     'players': room.players
                 }
@@ -647,22 +753,25 @@ class LobbyServer:
             )
     
     def find_game_server(self, game_name: str, version: str) -> Optional[str]:
-        """查找遊戲服務器文件"""
-        version_dir = os.path.join(self.upload_dir, game_name, version)
+        version_dir = os.path.abspath(os.path.join(self.upload_dir, game_name, version))
+        print(f"[DEBUG] 查找遊戲服務器於: {version_dir}")
+        
         if not os.path.exists(version_dir):
+            print(f"[ERROR] 版本目錄不存在: {version_dir}")
             return None
         
-        # 查找服務器腳本
         for filename in os.listdir(version_dir):
             if filename.endswith('_server.py'):
                 server_path = os.path.join(version_dir, filename)
                 if os.path.exists(server_path):
+                    print(f"[DEBUG] 找到遊戲服務器: {server_path}")
                     return server_path
         
+        print(f"[ERROR] 在 {version_dir} 中找不到 *_server.py 文件")
         return None
     
     def handle_add_review(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理添加評論"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -692,7 +801,6 @@ class LobbyServer:
             )
     
     def handle_get_reviews(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """獲取遊戲評論"""
         game_name = data.get('game_name', '').strip()
         
         if game_name not in self.data_manager.games:
@@ -714,7 +822,6 @@ class LobbyServer:
         )
     
     def handle_get_player_records(self, client_socket: socket.socket) -> Dict[str, Any]:
-        """獲取玩家遊戲記錄"""
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -723,6 +830,8 @@ class LobbyServer:
         
         username = self.clients[client_socket]
         records = self.data_manager.get_player_records(username)
+        
+        print(f"[DEBUG] handle_get_player_records: username={username}, 找到 {len(records)} 條記錄")
         
         records_data = []
         for record in records:
@@ -733,9 +842,11 @@ class LobbyServer:
                 'has_reviewed': record.has_reviewed
             })
         
+        print(f"[DEBUG] 準備返回記錄數據: {records_data}")
+        
         return NetworkProtocol.create_response(
             NetworkProtocol.STATUS_SUCCESS,
-            "獲取遊戲記錄成功",
+            "獲取記錄成功",
             {'records': records_data}
         )
 

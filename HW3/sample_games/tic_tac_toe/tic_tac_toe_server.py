@@ -5,9 +5,9 @@ import json
 import sys
 
 class TicTacToeServer:
-    def __init__(self, port):
+    def __init__(self, port, host='0.0.0.0'):
         self.port = port
-        self.host = '0.0.0.0'
+        self.host = host
         self.players = {}
         self.board = [' '] * 9
         self.current_player = 'X'
@@ -159,6 +159,17 @@ class TicTacToeServer:
             return None
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 9001
-    server = TicTacToeServer(port)
+    # 支持兩種呼叫方式：
+    # python server.py <port>
+    # python server.py <host> <port>
+    if len(sys.argv) >= 3:
+        host = sys.argv[1]
+        port = int(sys.argv[2])
+        server = TicTacToeServer(port, host)
+    elif len(sys.argv) >= 2:
+        port = int(sys.argv[1])
+        server = TicTacToeServer(port)
+    else:
+        port = 9001
+        server = TicTacToeServer(port)
     server.start()

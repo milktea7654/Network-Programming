@@ -1,0 +1,14 @@
+{
+  "name": "Number Guessing Game",
+  "version": "1.0.0",
+  "type": "cli",
+  "max_players": 2,
+  "description": "經典的數字猜謎遊戲，兩位玩家輪流猜測1-100之間的數字",
+  "author": "Demo Developer",
+  "created_at": "2025-11-22T00:00:00",
+  "entry_point": {
+    "server": "number_guessing_server.py",
+    "client": "number_guessing_client.py"
+  },
+  "requirements": ["socket", "threading", "json", "random"]
+}

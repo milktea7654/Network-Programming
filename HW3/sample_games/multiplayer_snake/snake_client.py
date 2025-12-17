@@ -49,7 +49,7 @@ class SnakeClient:
         right_frame = tk.Frame(main_frame, width=200)
         right_frame.pack(side=tk.RIGHT, fill=tk.Y)
         
-        tk.Label(right_frame, text="📊 Scoreboard", font=('Arial', 14, 'bold')).pack(pady=10)
+        tk.Label(right_frame, text=" Scoreboard", font=('Arial', 14, 'bold')).pack(pady=10)
         
         self.score_frame = tk.Frame(right_frame)
         self.score_frame.pack(fill=tk.BOTH, expand=True)
@@ -58,7 +58,7 @@ class SnakeClient:
         
         controls_frame = tk.Frame(self.root)
         controls_frame.pack(pady=5)
-        tk.Label(controls_frame, text="🎮 Controls: ↑↓←→ or WASD", font=('Arial', 10)).pack()
+        tk.Label(controls_frame, text=" Controls: ↑↓←→ or WASD", font=('Arial', 10)).pack()
         
         self.root.bind('<Up>', lambda e: self.change_direction('UP'))
         self.root.bind('<Down>', lambda e: self.change_direction('DOWN'))
@@ -77,12 +77,11 @@ class SnakeClient:
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
-            print(f"[Client] Connected to {self.host}:{self.port}")
             
             threading.Thread(target=self.receive_messages, daemon=True).start()
             
         except Exception as e:
-            print(f"[Client] Connection failed: {e}")
+            print(f" 連接失敗: {e}")
             self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to connect: {e}"))
             self.root.quit()
     
@@ -115,9 +114,9 @@ class SnakeClient:
                     self.root.after(0, lambda: self.show_game_over(rankings))
                     
         except Exception as e:
-            print(f"[Client] Receive error: {e}")
+            print(f" 接收消息錯誤: {e}")
         finally:
-            print("[Client] Disconnected from server")
+            print(" 與服務器斷開連接")
     
     def render_game(self):
         self.canvas.delete('all')
@@ -168,7 +167,7 @@ class SnakeClient:
         )
         
         for i, (player_id, player_data) in enumerate(sorted_players):
-            status = "💀" if not player_data['alive'] else "✅"
+            status = "" if not player_data['alive'] else ""
             is_me = " (YOU)" if str(player_id) == str(self.my_player_id) else ""
             
             label = tk.Label(
@@ -200,9 +199,9 @@ class SnakeClient:
         })
     
     def show_game_over(self, rankings):
-        result_text = "🏆 Game Over!\n\nFinal Rankings:\n"
+        result_text = " Game Over!\n\nFinal Rankings:\n"
         for i, (player_id, score) in enumerate(rankings):
-            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else f"{i+1}."
+            medal = ["1st", "2nd", "3rd"][i] if i < 3 else f"{i+1}."
             is_me = " (YOU)" if str(player_id) == str(self.my_player_id) else ""
             result_text += f"{medal} Player {player_id}{is_me}: {score} points\n"
         
@@ -213,7 +212,7 @@ class SnakeClient:
             message = json.dumps(data).encode('utf-8')
             self.socket.sendall(len(message).to_bytes(4, 'big') + message)
         except Exception as e:
-            print(f"[Client] Send error: {e}")
+            print(f" 發送消息失敗: {e}")
     
     def receive_message(self):
         try:

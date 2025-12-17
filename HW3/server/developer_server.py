@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Developer Server
-處理開發者相關的請求：上傳遊戲、更新版本、下架遊戲等
-"""
 import socket
 import threading
 import os
@@ -16,28 +12,25 @@ from models import Game
 from protocol import NetworkProtocol, GameProtocol, ResponseCode
 
 class DeveloperServer:
-    """開發者服務器"""
     
     def __init__(self, host: str = "localhost", port: int = 8001, data_manager: DataManager = None):
         self.host = host
         self.port = port
-        # 如果沒有傳入 data_manager，則創建新的（向後兼容）
         if data_manager:
             self.data_manager = data_manager
-            print(f"   🟢 DeveloperServer: 使用共用 DataManager (ID: {id(data_manager)})")
+            print(f"   DeveloperServer: 使用共用 DataManager (ID: {id(data_manager)})")
         else:
             self.data_manager = DataManager("./data")
-            print(f"   🟡 DeveloperServer: 創建新 DataManager (ID: {id(self.data_manager)})")
+            print(f"   DeveloperServer: 創建新 DataManager (ID: {id(self.data_manager)})")
         
         self.upload_dir = "./uploaded_games"
         os.makedirs(self.upload_dir, exist_ok=True)
         
         self.server_socket = None
         self.running = False
-        self.clients = {}  # {socket: username}
+        self.clients = {}
     
     def start(self):
-        """啟動服務器"""
         try:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -52,7 +45,6 @@ class DeveloperServer:
                     client_socket, address = self.server_socket.accept()
                     print(f"開發者客戶端連接: {address}")
                     
-                    # 為每個客戶端創建處理線程
                     client_thread = threading.Thread(
                         target=self.handle_client,
                         args=(client_socket,),
@@ -70,13 +62,11 @@ class DeveloperServer:
             self.cleanup()
     
     def stop(self):
-        """停止服務器"""
         self.running = False
         if self.server_socket:
             self.server_socket.close()
     
     def cleanup(self):
-        """清理資源"""
         for client_socket in list(self.clients.keys()):
             client_socket.close()
         self.clients.clear()
@@ -85,7 +75,7 @@ class DeveloperServer:
             self.server_socket.close()
     
     def handle_client(self, client_socket: socket.socket):
-        """處理客戶端請求"""
+
         try:
             while self.running:
                 message = NetworkProtocol.receive_message(client_socket)
@@ -99,7 +89,6 @@ class DeveloperServer:
         except Exception as e:
             print(f"處理客戶端時出錯: {e}")
         finally:
-            # 客戶端斷線處理
             if client_socket in self.clients:
                 username = self.clients[client_socket]
                 self.data_manager.set_user_online(username, False)
@@ -107,7 +96,7 @@ class DeveloperServer:
             client_socket.close()
     
     def process_message(self, client_socket: socket.socket, message: Dict[str, Any]) -> Dict[str, Any]:
-        """處理消息"""
+
         msg_type = message.get('type')
         data = message.get('data', {})
         
@@ -140,7 +129,7 @@ class DeveloperServer:
             )
     
     def handle_register(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理註冊"""
+
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
         
@@ -162,13 +151,12 @@ class DeveloperServer:
             )
     
     def handle_login(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理登入"""
+
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
         
         user = self.data_manager.authenticate_user(username, password, 'developer')
         if user:
-            # 檢查是否已經在線
             if user.is_online:
                 return NetworkProtocol.create_response(
                     NetworkProtocol.STATUS_ERROR,
@@ -190,7 +178,7 @@ class DeveloperServer:
             )
     
     def handle_logout(self, client_socket: socket.socket) -> Dict[str, Any]:
-        """處理登出"""
+
         if client_socket in self.clients:
             username = self.clients[client_socket]
             self.data_manager.set_user_online(username, False)
@@ -207,7 +195,7 @@ class DeveloperServer:
             )
     
     def handle_upload_game(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理遊戲上傳"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -226,44 +214,35 @@ class DeveloperServer:
                 "遊戲名稱不能為空"
             )
         
-        # 檢查遊戲是否已存在
         if game_name in self.data_manager.games:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
                 "遊戲名稱已存在"
             )
         
-        # 創建遊戲對象
         game = Game(game_name, developer, description, game_type, max_players)
         
-        # 創建遊戲目錄
         game_dir = os.path.join(self.upload_dir, game_name)
         version_dir = os.path.join(game_dir, game.current_version)
         os.makedirs(version_dir, exist_ok=True)
         
-        # 接收遊戲文件 (假設為zip文件)
         zip_path = os.path.join(version_dir, f"{game_name}.zip")
         
         try:
-            # 通知客戶端準備發送文件
             response = NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "準備接收遊戲文件"
             )
             NetworkProtocol.send_message(client_socket, response)
             
-            # 接收zip文件
             if GameProtocol.receive_file(client_socket, zip_path):
-                # 解壓文件
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(version_dir)
                 
-                # 刪除zip文件
                 os.remove(zip_path)
                 
-                # 保存遊戲信息到數據庫
                 if self.data_manager.add_game(game):
-                    print(f"✅ 遊戲 '{game.name}' 已上傳並保存")
+                    print(f" 遊戲 '{game.name}' 已上傳並保存")
                     print(f"   開發者: {game.developer}")
                     print(f"   類型: {game.game_type}")
                     print(f"   狀態: 已上架 (is_active={game.is_active})")
@@ -291,7 +270,7 @@ class DeveloperServer:
             )
     
     def handle_update_game(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理遊戲更新"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -309,7 +288,6 @@ class DeveloperServer:
                 "遊戲名稱和版本號不能為空"
             )
         
-        # 檢查遊戲是否存在且屬於該開發者
         if game_name not in self.data_manager.games:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -323,42 +301,34 @@ class DeveloperServer:
                 "只能更新自己的遊戲"
             )
         
-        # 檢查版本是否已存在
         if new_version in game.versions:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
                 "該版本已存在"
             )
         
-        # 創建新版本目錄
         game_dir = os.path.join(self.upload_dir, game_name)
         version_dir = os.path.join(game_dir, new_version)
         os.makedirs(version_dir, exist_ok=True)
         
-        # 接收新版本文件
         zip_path = os.path.join(version_dir, f"{game_name}_v{new_version}.zip")
         
         try:
-            # 通知客戶端準備發送文件
             response = NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "準備接收新版本文件"
             )
             NetworkProtocol.send_message(client_socket, response)
             
-            # 接收zip文件
             if GameProtocol.receive_file(client_socket, zip_path):
-                # 解壓文件
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(version_dir)
                 
-                # 刪除zip文件
                 os.remove(zip_path)
                 
-                # 更新遊戲版本信息
                 if self.data_manager.update_game_version(game_name, new_version, update_desc):
                     game = self.data_manager.games.get(game_name)
-                    print(f"✅ 遊戲 '{game_name}' 版本已更新")
+                    print(f" 遊戲 '{game_name}' 版本已更新")
                     print(f"   新版本: v{new_version}")
                     print(f"   更新說明: {update_desc}")
                     print(f"   狀態: 已上架 (is_active={game.is_active if game else 'Unknown'})")
@@ -386,7 +356,7 @@ class DeveloperServer:
             )
     
     def handle_remove_game(self, client_socket: socket.socket, data: Dict[str, Any]) -> Dict[str, Any]:
-        """處理遊戲下架"""
+
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
@@ -414,7 +384,6 @@ class DeveloperServer:
             )
     
     def handle_list_developer_games(self, client_socket: socket.socket) -> Dict[str, Any]:
-        """獲取開發者的遊戲列表"""
         if client_socket not in self.clients:
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_ERROR,
