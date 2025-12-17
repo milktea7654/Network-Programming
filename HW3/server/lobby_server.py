@@ -20,10 +20,17 @@ from protocol import NetworkProtocol, GameProtocol, ResponseCode
 class LobbyServer:
     """大廳服務器"""
     
-    def __init__(self, host: str = "localhost", port: int = 8002, data_dir: str = "./data"):
+    def __init__(self, host: str = "localhost", port: int = 8002, data_manager: DataManager = None):
         self.host = host
         self.port = port
-        self.data_manager = DataManager(data_dir)
+        # 如果沒有傳入 data_manager，則創建新的（向後兼容）
+        if data_manager:
+            self.data_manager = data_manager
+            print(f"   🟢 LobbyServer: 使用共用 DataManager (ID: {id(data_manager)})")
+        else:
+            self.data_manager = DataManager("./data")
+            print(f"   🟡 LobbyServer: 創建新 DataManager (ID: {id(self.data_manager)})")
+        
         self.upload_dir = "./uploaded_games"
         
         self.server_socket = None
@@ -225,7 +232,14 @@ class LobbyServer:
     
     def handle_list_games(self) -> Dict[str, Any]:
         """獲取遊戲列表"""
+        # 強制重新載入數據以確保最新狀態
+        self.data_manager.load_data()
         games = self.data_manager.get_active_games()
+        print(f"🔍 DEBUG: 重新載入後獲取到 {len(games)} 個活躍遊戲")
+        print(f"🔍 DEBUG: 所有遊戲與狀態:")
+        for name, game in self.data_manager.games.items():
+            status = "✅已上架" if game.is_active else "❌已下架"
+            print(f"   - {name}: {status}")
         
         games_data = []
         for game in games:
@@ -589,7 +603,7 @@ class LobbyServer:
             # 使用subprocess啟動遊戲服務器
             import subprocess
             game_process = subprocess.Popen([
-                sys.executable, game_server_path, str(game_port)
+                sys.executable, game_server_path, "0.0.0.0", str(game_port)
             ], cwd=os.path.dirname(game_server_path))
             
             # 記錄遊戲服務器進程
@@ -608,12 +622,18 @@ class LobbyServer:
             import time
             time.sleep(2)
             
+            # 使用實際的服務器地址，不是 0.0.0.0
+            if self.host == "0.0.0.0":
+                actual_host = "linux2.cs.nycu.edu.tw"
+            else:
+                actual_host = self.host
+            
             return NetworkProtocol.create_response(
                 NetworkProtocol.STATUS_SUCCESS,
                 "遊戲已開始",
                 {
                     'room_id': room_id,
-                    'game_server_host': self.host,
+                    'game_server_host': actual_host,
                     'game_server_port': game_port,
                     'players': room.players
                 }

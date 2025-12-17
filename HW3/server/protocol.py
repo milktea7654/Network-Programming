@@ -81,19 +81,37 @@ class NetworkProtocol:
             
             length = int.from_bytes(length_data, 'big')
             
+            # 檢查長度是否合理（防止異常大的數據）
+            if length > 100 * 1024 * 1024:  # 100MB 限制
+                print(f"❌ 數據長度異常: {length} bytes")
+                return None
+            
             # 接收實際數據
             data = b''
             while len(data) < length:
-                chunk = sock.recv(length - len(data))
+                chunk = sock.recv(min(4096, length - len(data)))
                 if not chunk:
                     return None
                 data += chunk
             
-            json_str = data.decode('utf-8')
+            # 嘗試解碼，如果失敗則嘗試其他編碼
+            try:
+                json_str = data.decode('utf-8')
+            except UnicodeDecodeError as e:
+                print(f"⚠️ UTF-8解碼失敗，嘗試使用 latin-1: {e}")
+                # 嘗試 latin-1 作為後備
+                json_str = data.decode('latin-1')
+            
             return json.loads(json_str)
             
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON解析失敗: {e}")
+            print(f"   數據預覽: {data[:100] if len(data) > 100 else data}")
+            return None
         except Exception as e:
             print(f"接收消息失敗: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
 class GameProtocol:

@@ -420,7 +420,25 @@ class DeveloperUI:
         game_path = input("遊戲文件路徑 (文件或目錄): ").strip()
         
         if game_name and game_path:
-            self.client.upload_game(game_name, description, game_type, max_players, game_path)
+            type_display = {"cli": "CLI", "gui": "GUI", "multiplayer": "MULTIPLAYER"}
+            print("\n✅ 確認上傳資訊:")
+            print(f"   遊戲名稱: {game_name}")
+            print(f"   簡介: {description}")
+            print(f"   類型: {type_display.get(game_type, game_type.upper())}")
+            print(f"   最大玩家數: {max_players}")
+            print(f"   路徑: {game_path}")
+            
+            confirm = input("\n確認上傳? (Y/N): ").strip().upper()
+            if confirm != 'Y':
+                print("❌ 已取消上傳")
+                input("\n按Enter鍵繼續...")
+                return
+            
+            if self.client.upload_game(game_name, description, game_type, max_players, game_path):
+                print("\n\u2705 修改確認:")
+                print(f"   遊戲 '{game_name}' 已成功上架")
+                print(f"   版本: v1.0.0")
+                print(f"   狀態: 已上架")
         else:
             print("❌ 遊戲名稱和路徑不能為空")
         
@@ -452,7 +470,24 @@ class DeveloperUI:
                 game_path = input("新版本文件路徑 (文件或目錄): ").strip()
                 
                 if new_version and game_path:
-                    self.client.update_game(game_name, new_version, description, game_path)
+                    print("\n✅ 確認更新資訊:")
+                    print(f"   遊戲名稱: {game_name}")
+                    print(f"   當前版本: v{games[game_idx]['current_version']}")
+                    print(f"   新版本: v{new_version}")
+                    print(f"   更新說明: {description}")
+                    print(f"   路徑: {game_path}")
+                    
+                    confirm = input("\n確認更新? (Y/N): ").strip().upper()
+                    if confirm != 'Y':
+                        print("❌ 已取消更新")
+                        input("\n按Enter鍵繼續...")
+                        return
+                    
+                    if self.client.update_game(game_name, new_version, description, game_path):
+                        print("\n\u2705 修改確認:")
+                        print(f"   遊戲 '{game_name}' 已更新至 v{new_version}")
+                        print(f"   更新說明: {description}")
+                        print(f"   狀態: 最新版本已生效")
                 else:
                     print("❌ 版本號和路徑不能為空")
             else:
@@ -484,9 +519,13 @@ class DeveloperUI:
             if 0 <= game_idx < len(games):
                 game_name = games[game_idx]['name']
                 
-                confirm = input(f"確定要下架遊戲 '{game_name}' 嗎? (y/N): ").strip().lower()
-                if confirm == 'y':
-                    self.client.remove_game(game_name)
+                confirm = input(f"確定要下架遊戲 '{game_name}' 嗎? (Y/N): ").strip().upper()
+                if confirm == 'Y':
+                    if self.client.remove_game(game_name):
+                        print("\n\u2705 修改確認:")
+                        print(f"   遊戲 '{game_name}' 已下架")
+                        print(f"   狀態: 不再顯示於遊戲商城")
+                        print(f"   註: 已下載的玩家仍可本地遊玩")
                 else:
                     print("❌ 已取消下架操作")
             else:

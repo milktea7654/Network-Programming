@@ -9,13 +9,37 @@ import signal
 import sys
 from developer_server import DeveloperServer
 from lobby_server import LobbyServer
+from data_manager import DataManager
 
 class GamePlatformServer:
     """遊戲平台服務器"""
     
     def __init__(self):
-        self.developer_server = DeveloperServer(host="0.0.0.0", port=8001)
-        self.lobby_server = LobbyServer(host="0.0.0.0", port=8002)
+        # 創建共用的 DataManager 實例
+        print("\n" + "="*60)
+        print("📋 初始化遊戲平台服務器")
+        print("="*60)
+        
+        shared_data_manager = DataManager("./data")
+        print(f"\n📦 DataManager 實例 ID: {id(shared_data_manager)}")
+        print(f"   當前用戶數: {len(shared_data_manager.users)}")
+        print(f"   當前遊戲數: {len(shared_data_manager.games)}")
+        if shared_data_manager.games:
+            print(f"   遊戲列表:")
+            for name, game in shared_data_manager.games.items():
+                status = "✅已上架" if game.is_active else "❌已下架"
+                print(f"      - {name} ({status})")
+        
+        # 兩個服務器共用同一個 DataManager
+        self.developer_server = DeveloperServer(host="0.0.0.0", port=8001, data_manager=shared_data_manager)
+        self.lobby_server = LobbyServer(host="0.0.0.0", port=8002, data_manager=shared_data_manager)
+        
+        print(f"\n🔗 確認共用狀態:")
+        print(f"   DeveloperServer DataManager ID: {id(self.developer_server.data_manager)}")
+        print(f"   LobbyServer DataManager ID: {id(self.lobby_server.data_manager)}")
+        print(f"   是否為同一個實例: {id(self.developer_server.data_manager) == id(self.lobby_server.data_manager)}")
+        print("="*60 + "\n")
+        
         self.running = False
     
     def start(self):

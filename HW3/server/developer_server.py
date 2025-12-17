@@ -18,10 +18,17 @@ from protocol import NetworkProtocol, GameProtocol, ResponseCode
 class DeveloperServer:
     """開發者服務器"""
     
-    def __init__(self, host: str = "localhost", port: int = 8001, data_dir: str = "./data"):
+    def __init__(self, host: str = "localhost", port: int = 8001, data_manager: DataManager = None):
         self.host = host
         self.port = port
-        self.data_manager = DataManager(data_dir)
+        # 如果沒有傳入 data_manager，則創建新的（向後兼容）
+        if data_manager:
+            self.data_manager = data_manager
+            print(f"   🟢 DeveloperServer: 使用共用 DataManager (ID: {id(data_manager)})")
+        else:
+            self.data_manager = DataManager("./data")
+            print(f"   🟡 DeveloperServer: 創建新 DataManager (ID: {id(self.data_manager)})")
+        
         self.upload_dir = "./uploaded_games"
         os.makedirs(self.upload_dir, exist_ok=True)
         
@@ -256,6 +263,11 @@ class DeveloperServer:
                 
                 # 保存遊戲信息到數據庫
                 if self.data_manager.add_game(game):
+                    print(f"✅ 遊戲 '{game.name}' 已上傳並保存")
+                    print(f"   開發者: {game.developer}")
+                    print(f"   類型: {game.game_type}")
+                    print(f"   狀態: 已上架 (is_active={game.is_active})")
+                    
                     return NetworkProtocol.create_response(
                         NetworkProtocol.STATUS_SUCCESS,
                         "遊戲上傳成功"
@@ -345,6 +357,12 @@ class DeveloperServer:
                 
                 # 更新遊戲版本信息
                 if self.data_manager.update_game_version(game_name, new_version, update_desc):
+                    game = self.data_manager.games.get(game_name)
+                    print(f"✅ 遊戲 '{game_name}' 版本已更新")
+                    print(f"   新版本: v{new_version}")
+                    print(f"   更新說明: {update_desc}")
+                    print(f"   狀態: 已上架 (is_active={game.is_active if game else 'Unknown'})")
+                    
                     return NetworkProtocol.create_response(
                         NetworkProtocol.STATUS_SUCCESS,
                         "遊戲更新成功"

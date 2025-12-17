@@ -33,6 +33,10 @@ class DataManager:
     
     def load_data(self):
         """從文件加載數據"""
+        print(f"\n💾 正在加載數據...")
+        print(f"   數據目錄: {self.data_dir}")
+        print(f"   遊戲文件: {self.games_file}")
+        
         try:
             # 加載用戶數據
             if os.path.exists(self.users_file):
@@ -40,6 +44,7 @@ class DataManager:
                     users_data = json.load(f)
                     for username, data in users_data.items():
                         self.users[username] = User.from_dict(data)
+                print(f"   ✅ 加載 {len(self.users)} 個用戶")
             
             # 加載遊戲數據
             if os.path.exists(self.games_file):
@@ -47,6 +52,10 @@ class DataManager:
                     games_data = json.load(f)
                     for game_name, data in games_data.items():
                         self.games[game_name] = Game.from_dict(data)
+                        print(f"   🎮 加載遊戲: {game_name} (is_active={self.games[game_name].is_active})")
+                print(f"   ✅ 加載 {len(self.games)} 個遊戲")
+            else:
+                print(f"   ⚠️  遊戲文件不存在: {self.games_file}")
             
             # 加載房間數據（通常重啟後清空）
             if os.path.exists(self.rooms_file):
@@ -68,7 +77,7 @@ class DataManager:
             print(f"加載數據時出錯: {e}")
     
     def save_data(self):
-        """保存所有數據到文件"""
+        """保存數據到文件"""
         try:
             # 保存用戶數據
             users_data = {username: user.to_dict() for username, user in self.users.items()}
@@ -76,9 +85,11 @@ class DataManager:
                 json.dump(users_data, f, ensure_ascii=False, indent=2)
             
             # 保存遊戲數據
-            games_data = {name: game.to_dict() for name, game in self.games.items()}
+            games_data = {game_name: game.to_dict() for game_name, game in self.games.items()}
             with open(self.games_file, 'w', encoding='utf-8') as f:
                 json.dump(games_data, f, ensure_ascii=False, indent=2)
+            
+            print(f"💾 數據已保存 - {len(self.users)} 用戶, {len(self.games)} 遊戲, {len(self.rooms)} 房間")
             
             # 保存房間數據
             rooms_data = {room_id: room.to_dict() for room_id, room in self.rooms.items()}
@@ -146,8 +157,16 @@ class DataManager:
     def remove_game(self, game_name: str, developer: str) -> bool:
         """移除遊戲（下架）"""
         if game_name in self.games and self.games[game_name].developer == developer:
+            print(f"🔍 DEBUG: 下架遊戲 '{game_name}'")
+            print(f"   下架前 is_active: {self.games[game_name].is_active}")
             self.games[game_name].is_active = False
+            print(f"   下架後 is_active: {self.games[game_name].is_active}")
             self.save_data()
+            print(f"   數據已保存")
+            # 驗證保存是否成功
+            active_games = self.get_active_games()
+            print(f"   當前活躍遊戲數量: {len(active_games)}")
+            print(f"   活躍遊戲列表: {[g.name for g in active_games]}")
             return True
         return False
     

@@ -2,20 +2,22 @@
 
 ### 內建遊戲
 
-1. **Number Guessing Game** (CLI)
-   - 類型: 命令行遊戲
+1. **Number Guessing Game** 
+   - 簡介: 經典的數字猜謎遊戲，兩位玩家輪流猜測1-100之間的數字，猜中得分
+   - 類型: CLI(命令行遊戲)
    - 玩家數: 2人
-   - 玩法: 輪流猜測數字，猜中得分
-
-2. **Tic Tac Toe** (GUI)
-   - 類型: 圖形介面遊戲
+   - 路徑: /home/c0922/Network-Programming/HW3/sample_games/number_guessing
+2. **Tic Tac Toe** 
+   - 簡介: 經典井字遊戲
+   - 類型: GUI(圖形介面遊戲)
    - 玩家數: 2人
-   - 玩法: 經典井字遊戲，Tkinter GUI
+   - 路徑: /home/c0922/Network-Programming/HW3/sample_games/tic_tac_toe
 
-3. **Multiplayer Snake** (GUI)
-   - 類型: 圖形介面遊戲
+3. **Multiplayer Snake** 
+   - 簡介: 多人貪食蛇大戰，即時競技
+   - 類型: Multiplayer(多人)
    - 玩家數: 2-4人
-   - 玩法: 多人貪食蛇大戰，即時競技
+   - 路徑: /home/c0922/Network-Programming/HW3/sample_games/multiplayer_snake
 
 ## 快速開始
 
@@ -41,11 +43,7 @@ sudo apt-get install python3-tk
 ```bash
 # 1. 下載專案
 git clone https://github.com/milktea7654/Network-Programming.git
-cd Network-Programming/HW3/game_platform_system
-
-# 腳本啟動
-cd /home/c0922/Network-Programming/HW3/game_platform_system
-./start.sh
+cd Network-Programming/HW3
 
 # 2. 啟動服務器 (終端1)
 python3 launcher.py
